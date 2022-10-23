@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "USBApiRubrica",
+    name: "FluvialApi",
     platforms: [
        .macOS(.v12)
     ],

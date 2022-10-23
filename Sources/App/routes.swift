@@ -3,16 +3,10 @@ import Vapor
 
 func routes(_ app: Application) throws {
     
-    let facultadController = FacultadController()
-    let docentesController = DocenteController()
-    let cursoController = CursoController()
-    let informesController = InformesController()
-    let programaController = ProgramaController()
+    let hallazgoController = HallazgoController()
+    let contratoController = ContratoController()
     
-    try app.register(collection: facultadController)
-    try app.register(collection: docentesController)
-    try app.register(collection: cursoController)
-    try app.register(collection: informesController)
-    try app.register(collection: programaController)
+    try app.register(collection: hallazgoController)
+    try app.register(collection: contratoController)
     
 }

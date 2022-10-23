@@ -15,12 +15,13 @@ public func configure(_ app: Application) throws {
     app.middleware.use(app.sessions.middleware)
     
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin:.any(["http://localhost:8080",
-                            "http://localhost:3333",
-                            "https://virtualidad.usbmed.edu.co",
-                            "http://localhost:8081",
-                            "http://localhost:8082",
-                            "http://localhost:8083"]),
+        allowedOrigin: .all,
+//            .any(["http://localhost:8080",
+//                            "http://localhost:3333",
+//                            "https://virtualidad.usbmed.edu.co",
+//                            "http://localhost:8081",
+//                            "http://localhost:8082",
+//                            "http://localhost:8083"]),
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
         allowedHeaders: [.accept,
                          .authorization,
@@ -29,7 +30,8 @@ public func configure(_ app: Application) throws {
                          .xRequestedWith,
                          .userAgent,
                          .accessControlAllowOrigin,
-                         .accessControlAllowHeaders],
+                         .accessControlAllowHeaders,
+                         .init("crossDomain")],
         allowCredentials: true
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
@@ -81,15 +83,17 @@ public func configure(_ app: Application) throws {
     
     app.redis.configuration = redisConfig
     //-----
+
+    app.migrations.add(CreateUser())
+    app.migrations.add(CreateContrato())
+    app.migrations.add(CreateCorriente())
+    app.migrations.add(CreateHallazgo())
+    app.migrations.add(CreateComponente())
+    app.migrations.add(CreateEstado())
+    app.migrations.add(CreateFoto())
+    app.migrations.add(CreateRevisor())
+  app.migrations.add(CreateHallazgoRevisorPivot())
     
-    app.migrations.add(CreateFacultad())
-    app.migrations.add(CreateDocente())
-    app.migrations.add(CreateFacultadDocentePivot())
-    app.migrations.add(CreateCurso())
-    app.migrations.add(CreateDocenteCursoPivot())
-    app.migrations.add(CreateRubrica())
-    app.migrations.add(CreatePrograma())
-        
 //    app.databases.middleware.use(UserMiddleware(), on: .psql)
 
     app.logger.logLevel = .debug
