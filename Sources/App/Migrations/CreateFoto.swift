@@ -6,7 +6,6 @@ struct CreateFoto: AsyncMigration {
     .id()
     .field("src", .string)
     .field("etiqueta", .string)
-    .field("hallazgoID", .uuid, .required, .references("hallazgo", "id"))
     .create()
   }
 

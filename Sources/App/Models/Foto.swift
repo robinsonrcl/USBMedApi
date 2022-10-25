@@ -12,18 +12,16 @@ final class Foto: Model, Content {
 
   @Field(key: "etiqueta")
   var etiqueta: String
-
-  @Parent(key: "hallazgoID")
-  var hallazgo: Hallazgo
+  
+  @Siblings(through:  HallazgoFotoPivot.self, from: \.$foto, to: \.$hallazgo)
+  var hallazgos: [Hallazgo]
 
   init() {}
 
   init(id: UUID? = nil, 
       src: String, 
-      etiqueta: String,
-      hallazgoID: Hallazgo.IDValue) {
+      etiqueta: String) {
     self.src = src
     self.etiqueta = etiqueta
-    self.$hallazgo.id = hallazgoID
   }
 }

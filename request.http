@@ -10,12 +10,43 @@ get http://localhost:8082/api/loadcsvunal
 ###
 get http://localhost:8082/api/contratos
 ###
+get http://localhost:8082/api/contratosCorrientes
+###
 get http://localhost:8082/api/corrientes
+###
+get http://localhost:8082/api/corrientesHallazgos
 ###
 get http://localhost:8082/api/hallazgos
 ###
-get http://localhost:8082/api/hallazgo/0e9358a7-055c-4ebf-b128-5f433785fad6
+get http://localhost:8082/api/hallazgo/02E51862-A90B-4FC8-A752-C0818A4BCA51
 ###
+get http://localhost:8082/api/search/9D38C1F8-734B-43CC-BDC5-02686EA6C5BF;9D38C1F8-734B-43CC-BDC5-02686EA6C5BF/76627BF6-81E3-45D7-A00F-9331E91B6B90
+###
+post http://localhost:8082/api/search
+Content-Type: application/json
+
+{
+  "corrientes": [
+    "76627BF6-81E3-45D7-A00F-9331E91B6B90",
+  ],
+  "componentes": [
+    "MURO",
+    "ESTRUCTURA_DE_CAIDA"
+  ],
+  "estados": [
+    "MALO",
+  ]
+}
+###
+contratos: 
+  9D38C1F8-734B-43CC-BDC5-02686EA6C5BF
+corrientes: 
+  76627BF6-81E3-45D7-A00F-9331E91B6B90
+hallazgos: 
+  BDA4E976-0AA4-47E8-B549-95DDCC8B4033
+  9A5F02A0-3379-45CD-A5E6-DD92D7396F5F
+
+
 0   NOMBRE	row[34]
 1   YEAR	absc
 2   MES	

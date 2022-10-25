@@ -7,31 +7,86 @@ struct ContratoController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
       let contratoRoute = routes.grouped("api")
 
-      contratoRoute.get("contratos", use: getAllContrato)
-      contratoRoute.get("corrientes", use: getAllCorrientes)
-      contratoRoute.get("hallazgos", use: getAllHallazgos)
+      contratoRoute.get("contratos", use: getContratos)
+      contratoRoute.get("contratosCorrientes", use: getContratosCorrientes)
+      contratoRoute.get("corrientes", use: getCorrientes)
+      contratoRoute.get("corrientesHallazgos", use: getCorrientesHallazgos)
+      contratoRoute.get("hallazgos", use: getHallazgos)
       contratoRoute.get("hallazgo",":hallazgoID", use: getHallazgo)
       contratoRoute.get("loadcsvunal", use: getCSVData)
+      
+      contratoRoute.post("search", use: searchAny)
     }
+  
+  struct ArraySearch: Content {
+    let corrientes: [UUID]
+    let componentes: [String]
+    let estados: [String]
+  }
+  
+  func searchAny(_ req: Request) async throws -> [Hallazgo] {
+    var searchCorrientes = [UUID]()
+    var searchComponentes = [EnumComponente]()
+    var searchEstados = [EnumEstado]()
+    
+    let data = try req.content.decode(ArraySearch.self)
+    
+    data.corrientes.forEach { idCorriente in
+      searchCorrientes.append(idCorriente)
+    }
+    data.componentes.forEach { componente in
+      searchComponentes.append(EnumComponente(rawValue: componente)!)
+    }
+    data.estados.forEach { estado in
+      searchEstados.append(EnumEstado(rawValue: estado)!)
+    }
+    
+    let hallazgos = try await Hallazgo.query(on: req.db)
+      .filter(\.$corriente.$id ~~ searchCorrientes)
+      .filter(\.$componente ~~ searchComponentes)
+      .filter(\.$estado ~~ searchEstados)
+      .all()
+    
+    return hallazgos
+    
+  }
 
   func getHallazgo(_ req: Request) async throws -> Hallazgo {
     return try await Hallazgo.find(req.parameters.get("hallazgoID"), on: req.db)!
   }
-  
-  func getAllContrato(_ req: Request) async throws -> [Contrato] {
+
+  func getContratos(_ req: Request) async throws -> [Contrato] {
     return try await Contrato.query(on: req.db).all()
   }
   
-    func getAllCorrientes(_ req: Request) async throws -> [Corriente] {
-//        let contrato = try await Contrato.query(on: req.db).first()
-//
-//        let corrientes = (try await contrato?.$corriente.get(on: req.db))!
-        
-      return try await Corriente.query(on: req.db).all()
-      
-    }
+  func getContratosCorrientes(_ req: Request) async throws -> [Contrato] {
+    let contratos = try await Contrato.query(on: req.db)
+      .with(\.$corriente)
+      .all()
+    
+    return contratos
+  }
   
-  func getAllHallazgos(_ req: Request) async throws -> [Hallazgo] {
+  func getCorrientes(_ req: Request) async throws -> [Corriente] {
+    return try await Corriente.query(on: req.db).all()
+  }
+  
+  func getCorrientesHallazgos(_ req: Request) async throws -> [Corriente] {
+//    let corrientes = try await Corriente.query(on: req.db)
+//      .join(children: \.$hallazgo, method: .inner)
+//      .all()
+//
+//    for corriente in corrientes {
+//      corriente.$hallazgo.value = try [corriente.joined(Hallazgo.self)]
+//    }
+    let corrientes = try await Corriente.query(on: req.db)
+      .with(\.$hallazgo)
+      .all()
+    
+    return corrientes
+  }
+  
+  func getHallazgos(_ req: Request) async throws -> [Hallazgo] {
     return try await Hallazgo.query(on: req.db).all()
   }
     
@@ -145,7 +200,6 @@ struct ContratoController: RouteCollection {
     
     hallazgoWide.hallazgo.fecha = asignarFecha(fecha: row[8])
     hallazgoWide.hallazgo.componente = readComponente(row[10])
-    
     hallazgoWide.hallazgo.nomenclatura = row[11]
     hallazgoWide.hallazgo.margen = readMargen(row[12])   // Margen
     hallazgoWide.hallazgo.hallazgo1 = row[13]
@@ -164,20 +218,12 @@ struct ContratoController: RouteCollection {
     hallazgoWide.hallazgo.nivelriesgo = row[20]
     hallazgoWide.hallazgo.coordenadas = coordenadaFinal(coordenadaOriginal: row[21])
     hallazgoWide.hallazgo.position = row[22]
-    
-    let fotos = readFotos(f1: row[23],t1: row[24],
-                          f2: row[25],t2: row[26],
-                          f3: row[27],t3: row[28],
-                          f4: row[29],t4: row[30])
-    
-    hallazgoWide.hallazgo.$foto.value = fotos  // Fotos
     hallazgoWide.hallazgo.referencia = row[31]
     hallazgoWide.hallazgo.zona = readZona(row[32])   // Zona
     hallazgoWide.hallazgo.tramo1 = row[33]
     
     let abscisakm = row[34].replacingOccurrences(of: ",", with: ".")
     hallazgoWide.hallazgo.abscisakm = (abscisakm as NSString).floatValue
-    
     hallazgoWide.hallazgo.shapeleng = Float(row[36]) ?? 0.0  // Shape Leng -Float
     hallazgoWide.hallazgo.diagnostico = row[37]
     hallazgoWide.hallazgo.criticidad = row[38]
@@ -187,6 +233,10 @@ struct ContratoController: RouteCollection {
     hallazgoWide.hallazgo.cota = row[42]
     hallazgoWide.hallazgo.linkdiseno = row[43]
     
+    hallazgoWide.fotos.append(contentsOf: readFotos(f1: row[23],t1: row[24],
+                                                    f2: row[25],t2: row[26],
+                                                    f3: row[27],t3: row[28],
+                                                    f4: row[29],t4: row[30]))
     hallazgoWide.revisors.append(contentsOf: readRevisors(row[35]))
     return hallazgoWide
   }
@@ -328,6 +378,23 @@ struct ContratoController: RouteCollection {
               }
             }
             // ------
+            var newFoto = Foto()
+            for foto in hallazgoWide.fotos {
+              if(foto.src != "") {
+                let fotoDB = try await Foto.query(on: req.db)
+                  .filter(\.$src == foto.src)
+                  .first()
+                
+                if(fotoDB == nil) {
+                  newFoto  = Foto(src: foto.src, etiqueta: foto.text)
+                  try await newFoto.save(on: req.db)
+                  try await hallazgoFinal.$fotos.attach(newFoto, on: req.db)
+                }else{
+                  try await hallazgoFinal.$fotos.attach(fotoDB!, on: req.db)
+                }
+              }
+            }
+            // ------
           }
 
         }
@@ -395,29 +462,53 @@ struct ContratoController: RouteCollection {
     func readFotos(f1: String, t1: String,
                    f2: String, t2: String,
                    f3: String, t3: String,
-                   f4: String, t4: String) -> [Foto] {
+                   f4: String, t4: String) -> [ClaseFoto] {
         
-        var fotos = [Foto]()
-        let foto = Foto()
+        var fotos = [ClaseFoto]()
+        let foto = ClaseFoto()
         
         if(f1 != "") {
-            foto.src = f1
-            foto.etiqueta = t1
+          var f1C = f1.trimmingCharacters(in: .whitespaces)
+          f1C = f1C.replacingOccurrences(of: " ", with: "_")
+          f1C = f1C.replacingOccurrences(of: "  ", with: "_")
+          f1C = f1C.replacingOccurrences(of: "\\", with: "/")
+          f1C = f1C.replacingOccurrences(of: "__", with: "_")
+          f1C = f1C.applyingTransform(.stripDiacritics, reverse: false)!
+            foto.src = f1C
+            foto.text = t1
             fotos.append(foto)
         }
         if(f2 != "") {
-            foto.src = f2
-            foto.etiqueta = t2
+          var f2C = f2.trimmingCharacters(in: .whitespaces)
+          f2C = f2C.replacingOccurrences(of: " ", with: "_")
+          f2C = f2C.replacingOccurrences(of: "  ", with: "_")
+          f2C = f2C.replacingOccurrences(of: "\\", with: "/")
+          f2C = f2C.replacingOccurrences(of: "__", with: "_")
+          f2C = f2C.applyingTransform(.stripDiacritics, reverse: false)!
+            foto.src = f2C
+            foto.text = t2
             fotos.append(foto)
         }
         if(f3 != "") {
-            foto.src = f3
-            foto.etiqueta = t3
+          var f3C = f3.trimmingCharacters(in: .whitespaces)
+          f3C = f3C.replacingOccurrences(of: " ", with: "_")
+          f3C = f3C.replacingOccurrences(of: "  ", with: "_")
+          f3C = f3C.replacingOccurrences(of: "\\", with: "/")
+          f3C = f3C.replacingOccurrences(of: "__", with: "_")
+          f3C = f3C.applyingTransform(.stripDiacritics, reverse: false)!
+            foto.src = f3C
+            foto.text = t3
             fotos.append(foto)
         }
         if(f4 != "") {
-            foto.src = f4
-            foto.etiqueta = t4
+          var f4C = f4.trimmingCharacters(in: .whitespaces)
+          f4C = f4C.replacingOccurrences(of: " ", with: "_")
+          f4C = f4C.replacingOccurrences(of: "  ", with: "_")
+          f4C = f4C.replacingOccurrences(of: "\\", with: "/")
+          f4C = f4C.replacingOccurrences(of: "__", with: "_")
+          f4C = f4C.applyingTransform(.stripDiacritics, reverse: false)!
+            foto.src = f4C
+            foto.text = t4
             fotos.append(foto)
         }
         

@@ -92,12 +92,12 @@ final class Hallazgo: Model, Content {
     @Enum(key: "estado")
     var estado: EnumEstado
 
-    @Children(for: \.$hallazgo)
-    var foto: [Foto]
-
   @Siblings(through:  HallazgoRevisorPivot.self, from: \.$hallazgo, to: \.$revisor)
   var revirsors: [Revisor]
 
+  @Siblings(through:  HallazgoFotoPivot.self, from: \.$hallazgo, to: \.$foto)
+  var fotos: [Foto]
+  
     @Parent(key: "corrienteID")
     var corriente: Corriente
 
