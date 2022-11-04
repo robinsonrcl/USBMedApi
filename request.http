@@ -18,7 +18,7 @@ get http://localhost:8082/api/corrientesHallazgos
 ###
 get http://localhost:8082/api/hallazgos
 ###
-get http://localhost:8082/api/hallazgo/02E51862-A90B-4FC8-A752-C0818A4BCA51
+get http://localhost:8082/api/hallazgo/5AFBD243-A6A4-4621-988F-53B69039D62E
 ###
 get http://localhost:8082/api/search/9D38C1F8-734B-43CC-BDC5-02686EA6C5BF;9D38C1F8-734B-43CC-BDC5-02686EA6C5BF/76627BF6-81E3-45D7-A00F-9331E91B6B90
 ###

@@ -80,7 +80,10 @@ struct ContratoController: RouteCollection {
 //      corriente.$hallazgo.value = try [corriente.joined(Hallazgo.self)]
 //    }
     let corrientes = try await Corriente.query(on: req.db)
-      .with(\.$hallazgo)
+      .with(\.$hallazgo) { corriente in
+        corriente.with(\.$fotos)
+        corriente.with(\.$revirsors)
+      }
       .all()
     
     return corrientes
