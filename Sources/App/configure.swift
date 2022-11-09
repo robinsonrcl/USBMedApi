@@ -94,6 +94,8 @@ public func configure(_ app: Application) throws {
     app.migrations.add(CreateRevisor())
   app.migrations.add(CreateHallazgoRevisorPivot())
   app.migrations.add(CreateHallazgoFotoPivot())
+  app.migrations.add(AddIcono())
+  app.migrations.add(AddColorestado())
     
 //    app.databases.middleware.use(UserMiddleware(), on: .psql)
 

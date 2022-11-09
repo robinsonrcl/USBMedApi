@@ -100,6 +100,12 @@ final class Hallazgo: Model, Content {
   
     @Parent(key: "corrienteID")
     var corriente: Corriente
+  
+  @Field(key: Hallazgo.v20221108.icono)
+  var icono: String
+  
+  @Field(key: Hallazgo.v20221109.colorestado)
+  var colorestado: String
 
     init() {}
     
@@ -130,7 +136,9 @@ final class Hallazgo: Model, Content {
           linkdiseno: String = "",
          componente: EnumComponente,
          estado: EnumEstado,
-          corrienteID: Corriente.IDValue
+          corrienteID: Corriente.IDValue,
+         icono: String = "marcadorxDefinir.png",
+         colorestado: String = "#FF0080"
          ) {
         
         self.fecha = fecha
@@ -160,8 +168,20 @@ final class Hallazgo: Model, Content {
       self.componente = componente
       self.estado = estado
         self.$corriente.id = corrienteID
+      self.icono = icono
+      self.colorestado = colorestado
     }
     
+}
+
+extension Hallazgo {
+  enum v20221108 {
+    static let schemaName: String = "hallazgo"
+    static let icono = FieldKey(stringLiteral: "icono")
+  }
+  enum v20221109 {
+    static let colorestado = FieldKey(stringLiteral: "colorestado")
+  }
 }
 
 enum EnumMargen: String, Codable, CaseIterable {

@@ -1,3 +1,4 @@
+
 get http://localhost:8082/api/hallazgo
 ###
 get http://localhost:8082/api/contratos/load
@@ -18,7 +19,7 @@ get http://localhost:8082/api/corrientesHallazgos
 ###
 get http://localhost:8082/api/hallazgos
 ###
-get http://localhost:8082/api/hallazgo/5AFBD243-A6A4-4621-988F-53B69039D62E
+get http://localhost:8082/api/hallazgo/1C08C672-0580-4907-AC8F-C1C95DB9391C
 ###
 get http://localhost:8082/api/search/9D38C1F8-734B-43CC-BDC5-02686EA6C5BF;9D38C1F8-734B-43CC-BDC5-02686EA6C5BF/76627BF6-81E3-45D7-A00F-9331E91B6B90
 ###
@@ -27,14 +28,14 @@ Content-Type: application/json
 
 {
   "corrientes": [
-    "76627BF6-81E3-45D7-A00F-9331E91B6B90",
+    "18326600-891d-4c25-be85-d1e98f996782",
   ],
   "componentes": [
     "MURO",
-    "ESTRUCTURA_DE_CAIDA"
+    "PLACA"
   ],
   "estados": [
-    "MALO",
+    "NA",
   ]
 }
 ###

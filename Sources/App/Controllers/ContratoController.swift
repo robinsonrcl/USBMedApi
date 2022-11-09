@@ -16,6 +16,9 @@ struct ContratoController: RouteCollection {
       contratoRoute.get("loadcsvunal", use: getCSVData)
       
       contratoRoute.post("search", use: searchAny)
+      
+      contratoRoute.get("componentes", use: getComponentes)
+      contratoRoute.get("estados", use: getEstados)
     }
   
   struct ArraySearch: Content {
@@ -42,21 +45,43 @@ struct ContratoController: RouteCollection {
     }
     
     let hallazgos = try await Hallazgo.query(on: req.db)
+      .with(\.$fotos)
+      .with(\.$revirsors)
       .filter(\.$corriente.$id ~~ searchCorrientes)
       .filter(\.$componente ~~ searchComponentes)
       .filter(\.$estado ~~ searchEstados)
       .all()
     
+    print("Total hallazgos encontrados: \(hallazgos.count)")
+    
     return hallazgos
     
   }
+  
+  func getComponentes(_ req: Request) async throws -> [Componente] {
+    return try await Componente.query(on: req.db).all()
+  }
 
+  func getEstados(_ req: Request) async throws -> [Estado] {
+    return  try await Estado.query(on: req.db).all()
+  }
+  
   func getHallazgo(_ req: Request) async throws -> Hallazgo {
-    return try await Hallazgo.find(req.parameters.get("hallazgoID"), on: req.db)!
+    let hallazgo = try await
+    Hallazgo.find(req.parameters.get("hallazgoID"), on: req.db)
+      
+    try await hallazgo?.$revirsors.load(on: req.db)
+    try await hallazgo?.$fotos.load(on: req.db)
+      
+                                           
+    return hallazgo ?? Hallazgo()
+                                           
   }
 
   func getContratos(_ req: Request) async throws -> [Contrato] {
-    return try await Contrato.query(on: req.db).all()
+    return try await Contrato.query(on: req.db)
+      .with(\.$corriente)
+      .all()
   }
   
   func getContratosCorrientes(_ req: Request) async throws -> [Contrato] {
@@ -90,7 +115,10 @@ struct ContratoController: RouteCollection {
   }
   
   func getHallazgos(_ req: Request) async throws -> [Hallazgo] {
-    return try await Hallazgo.query(on: req.db).all()
+    return try await Hallazgo.query(on: req.db)
+      .with(\.$revirsors)
+      .with(\.$fotos)
+      .all()
   }
     
     func getCSVData(_ req: Request) async throws -> [Array<String>] {
@@ -178,9 +206,9 @@ struct ContratoController: RouteCollection {
                   corrienteAnterior = corr_nombre
                     
                   corriente.nombre = corr_nombre
-                  corriente.coordenadas = row[5]
+                  corriente.coordenadas = coordenadaFinal(coordenadaOriginal: row[5])
                   corriente.descripcion = row[6]
-                  corriente.puntomedio = row[7]
+                  corriente.puntomedio = limpiarComillas(row[7])
                   corriente.etiquetas = ""
                   corriente.fecha = asignarFecha(fecha: row[8])
                   
@@ -191,7 +219,6 @@ struct ContratoController: RouteCollection {
                 }
                 
               flow.visitas.append(loadRowHallazgo(row))
-              //flow.visitas.revisors.append(contentsOf: readRevisors(row[35]))
             }
         }
         
@@ -220,7 +247,7 @@ struct ContratoController: RouteCollection {
     hallazgoWide.hallazgo.afectacion = row[19]
     hallazgoWide.hallazgo.nivelriesgo = row[20]
     hallazgoWide.hallazgo.coordenadas = coordenadaFinal(coordenadaOriginal: row[21])
-    hallazgoWide.hallazgo.position = row[22]
+    hallazgoWide.hallazgo.position = limpiarComillas(row[22])
     hallazgoWide.hallazgo.referencia = row[31]
     hallazgoWide.hallazgo.zona = readZona(row[32])   // Zona
     hallazgoWide.hallazgo.tramo1 = row[33]
@@ -244,6 +271,24 @@ struct ContratoController: RouteCollection {
     return hallazgoWide
   }
   
+  func limpiarComillas(_ position: String) -> String {
+    var newPosition = position.replacingOccurrences(of: "\"\"", with: "\"")
+    newPosition = newPosition.replacingOccurrences(of: "\"{", with: "{")
+    newPosition = newPosition.replacingOccurrences(of: "}\"", with: "}")
+    newPosition = newPosition.replacingOccurrences(of: ",", with: ".")
+    newPosition = newPosition.replacingOccurrences(of: ". \"", with: ", \"")
+    newPosition = newPosition.replacingOccurrences(of: ".  \"", with: ", \"")
+    
+    newPosition = newPosition.replacingOccurrences(of: ". '", with: ", '")
+    newPosition = newPosition.replacingOccurrences(of: ".  '", with: ", '")
+    newPosition = newPosition.replacingOccurrences(of: "},", with: "}")
+    newPosition = newPosition.replacingOccurrences(of: "}.", with: "}")
+    newPosition = newPosition.replacingOccurrences(of: "'", with: "\"")
+    
+    
+    return newPosition
+  }
+  
   func readRevisors(_ revisorsCSV: String) -> [String] {
     var revisors = [String]()
     
@@ -258,8 +303,8 @@ struct ContratoController: RouteCollection {
   
   func coordenadaFinal(coordenadaOriginal: String ) -> String {
     var lineString = coordenadaOriginal
-    lineString = coordenadaOriginal.replacingOccurrences(of: "LINESTRING", with: "")
     lineString = lineString.replacingOccurrences(of: "MULTILINESTRING", with: "")
+    lineString = coordenadaOriginal.replacingOccurrences(of: "LINESTRING", with: "")
     lineString = lineString.replacingOccurrences(of: "Z", with: "")
     lineString = lineString.replacingOccurrences(of: "POINT", with: "")
     lineString = lineString.replacingOccurrences(of: "(", with: "")
@@ -271,6 +316,10 @@ struct ContratoController: RouteCollection {
     var lat = ""
     var lng = ""
     var alt = ""
+    
+    if(lineString.starts(with: "NOT CHANGE")){
+      return coordenadaOriginal
+    }
     
     coordenadas.forEach { fila in
       let row = fila.trimmingCharacters(in: .whitespaces)
@@ -285,7 +334,8 @@ struct ContratoController: RouteCollection {
         alt = coordenadas[2]
       }
       
-      coordenada = "{ 'lng': \(lng), 'lat': \(lat), 'alt': \(alt) },"
+      // coordenada = "{ \"lng\": \(lng), \"lat\": \(lat), \"alt\": \(alt) },"
+      coordenada = "{ \"lng\": \(lng), \"lat\": \(lat) },"
       result += coordenada
       
       lng = ""
@@ -334,6 +384,27 @@ struct ContratoController: RouteCollection {
           
           for hallazgoWide in flow.visitas {
             
+            var colorestado: String
+            var icono: String = hallazgoWide.hallazgo.componente.rawValue
+            
+            switch hallazgoWide.hallazgo.estado {
+              case .NA:
+                icono = icono.lowercased() + EnumEstado.NA.rawValue.capitalized + ".png"
+                colorestado = "#FF0080"
+              case .BUENO:
+                icono = icono.lowercased() + EnumEstado.BUENO.rawValue.capitalized + ".png"
+                colorestado = "#008000"
+              case .REGULAR:
+                icono = icono.lowercased() + EnumEstado.REGULAR.rawValue.capitalized + ".png"
+                colorestado = "#FFCE30"
+              case .MALO:
+                icono = icono.lowercased() + EnumEstado.MALO.rawValue.capitalized + ".gif"
+                colorestado = "#E83845"
+              default:
+                icono = "marcadorxDefinir.png"
+                colorestado = "#FF0080"
+            }
+            
             let hallazgoFinal = Hallazgo(fecha: hallazgoWide.hallazgo.fecha,
                                          nomenclatura: hallazgoWide.hallazgo.nomenclatura,
                                          margen: hallazgoWide.hallazgo.margen,
@@ -360,9 +431,35 @@ struct ContratoController: RouteCollection {
                                          linkdiseno: hallazgoWide.hallazgo.linkdiseno,
                                          componente: hallazgoWide.hallazgo.componente,
                                          estado: hallazgoWide.hallazgo.estado,
-                                        corrienteID: idCorriente)
+                                        corrienteID: idCorriente,
+                                         icono: icono,
+                                        colorestado: colorestado)
             
             try await hallazgoFinal.save(on: req.db)
+            
+            
+            //-- Save estado
+            let estadoHallazgo = hallazgoWide.hallazgo.estado.rawValue
+            let verifyEstado = try await Estado.query(on: req.db)
+              .filter(\.$nombre == estadoHallazgo)
+              .first()
+            
+            if(verifyEstado == nil){
+              let newEstado =
+                  Estado(nombre: estadoHallazgo, icono: "colorxDefinir.png")
+              try await newEstado.save(on: req.db)
+            }
+            // Save componente
+            let componenteHallazgo = hallazgoWide.hallazgo.componente.rawValue
+            let verifyComponente = try await Componente.query(on: req.db)
+              .filter(\.$nombre == componenteHallazgo)
+              .first()
+            
+            if(verifyComponente  ==  nil){
+              let newComponente  =
+                  Componente(nombre: componenteHallazgo, icono: "iconoxDefinir.png")
+              try await newComponente.save(on: req.db)
+            }
             // ------
             var newRevisor = Revisor()
             for revisor in hallazgoWide.revisors {

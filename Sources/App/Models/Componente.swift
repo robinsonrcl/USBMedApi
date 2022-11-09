@@ -21,7 +21,7 @@ final class Componente: Model, Content {
   init(id: UUID? = nil, 
       nombre: String, 
       icono: String, 
-      estado: Bool = true) {
+      estado: Bool = false) {
     self.nombre = nombre
     self.icono = icono
     self.estado = estado
