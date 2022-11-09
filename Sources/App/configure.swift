@@ -34,7 +34,7 @@ public func configure(_ app: Application) throws {
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
     // cors middleware should come before default error middleware using `at: .beginning`
-    app.middleware.use(cors, at: .beginning)
+    //app.middleware.use(cors, at: .beginning)
     
     let port: Int
     if let environmentPort = Environment.get("PORT") {
