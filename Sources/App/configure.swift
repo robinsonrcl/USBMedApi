@@ -15,24 +15,22 @@ public func configure(_ app: Application) throws {
     app.middleware.use(app.sessions.middleware)
     
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .all,
-//            .any(["http://localhost:8080",
-//                            "http://localhost:3333",
-//                            "https://virtualidad.usbmed.edu.co",
-//                            "http://localhost:8081",
-//                            "http://localhost:8082",
-//                            "http://localhost:8083"]),
-        allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
-        allowedHeaders: [.accept,
-                         .authorization,
-                         .contentType,
-                         .origin,
-                         .xRequestedWith,
-                         .userAgent,
-                         .accessControlAllowOrigin,
-                         .accessControlAllowHeaders,
-                         .init("crossDomain")],
-        allowCredentials: true
+      allowedOrigin:.any(["http://localhost:8080",
+                          "http://localhost",
+                          "https://bitacorafluvial.com",
+                          "http://localhost:8081",
+                          "http://localhost:8082",
+                          "http://localhost:8083"]),
+      allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
+      allowedHeaders: [.accept,
+                       .authorization,
+                       .contentType,
+                       .origin,
+                       .xRequestedWith,
+                       .userAgent,
+                       .accessControlAllowOrigin,
+                       .accessControlAllowHeaders],
+      allowCredentials: true
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
     // cors middleware should come before default error middleware using `at: .beginning`
