@@ -7,6 +7,7 @@
 
 import Fluent
 import Vapor
+import SQLKit
 
 final class Hallazgo: Model, Content {
     static let schema = "hallazgo"
@@ -106,6 +107,9 @@ final class Hallazgo: Model, Content {
   
   @Field(key: Hallazgo.v20221109.colorestado)
   var colorestado: String
+  
+  @Field(key: Hallazgo.v20221127.consecutivo)
+  var consecutivo: Int
 
     init() {}
     
@@ -138,7 +142,8 @@ final class Hallazgo: Model, Content {
          estado: EnumEstado,
           corrienteID: Corriente.IDValue,
          icono: String = "marcadorxDefinir.png",
-         colorestado: String = "#FF0080"
+         colorestado: String = "#FF0080",
+         consecutivo: Int = 0
          ) {
         
         self.fecha = fecha
@@ -165,11 +170,12 @@ final class Hallazgo: Model, Content {
         self.costo = costo
         self.cota = cota
         self.linkdiseno = linkdiseno
-      self.componente = componente
-      self.estado = estado
+        self.componente = componente
+        self.estado = estado
         self.$corriente.id = corrienteID
-      self.icono = icono
-      self.colorestado = colorestado
+        self.icono = icono
+        self.colorestado = colorestado
+        self.consecutivo = consecutivo
     }
     
 }
@@ -181,6 +187,9 @@ extension Hallazgo {
   }
   enum v20221109 {
     static let colorestado = FieldKey(stringLiteral: "colorestado")
+  }
+  enum v20221127 {
+    static let consecutivo = FieldKey(stringLiteral: "consecutivo")
   }
 }
 

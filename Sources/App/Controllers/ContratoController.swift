@@ -13,12 +13,13 @@ struct ContratoController: RouteCollection {
       contratoRoute.get("corrientesHallazgos", use: getCorrientesHallazgos)
       contratoRoute.get("hallazgos", use: getHallazgos)
       contratoRoute.get("hallazgo",":hallazgoID", use: getHallazgo)
-      contratoRoute.get("loadcsvunal", use: getCSVData)
+      contratoRoute.post("loadcsvunal", use: getCSVData)
       
       contratoRoute.post("search", use: searchAny)
       
       contratoRoute.get("componentes", use: getComponentes)
       contratoRoute.get("estados", use: getEstados)
+      contratoRoute.post("patologia", use: getPatologia)
     }
   
   struct ArraySearch: Content {
@@ -56,6 +57,40 @@ struct ContratoController: RouteCollection {
     
     return hallazgos
     
+  }
+  
+  func getPatologia(_ req: Request) async throws -> [Hallazgo] {
+    let centerPoint = try req.content.decode(CheckPoint.self)
+    var visitas = [Hallazgo]()
+    
+    let hallazgos = try await Hallazgo.query(on: req.db)
+      .with(\.$revirsors)
+      .with(\.$fotos)
+      .all()
+    
+     hallazgos.forEach { hallazgo in
+      //{ "lat": 6.162633326, "lng": -75.60666957 }
+      let uno = hallazgo.position.components(separatedBy: ",")
+      let unoa = uno[0]
+      let unob = unoa.components(separatedBy: ":")
+      let unoc = unob[1].trimmingCharacters(in: .whitespaces)
+      let lat = Double(unoc)
+      // ----
+      let uno1 = uno[1]
+      let uno2 = uno1.components(separatedBy: ":")
+      var uno3  = uno2[1].replacingOccurrences(of: "}", with: "")
+      uno3 = uno3.trimmingCharacters(in: .whitespaces)
+      let lng = Double(uno3)
+      // -----
+      let checkpoint = CheckPoint(lat: lat ?? 0.0, lng: lng ?? 0.0)
+      
+      if(centerPoint.lat != checkpoint.lat && centerPoint.lng != checkpoint.lng) {
+        if (arePointsNear(checkpoint, centerPoint, 0.2)) {
+          visitas.append(hallazgo)
+        }
+      }
+    }
+    return visitas
   }
   
   func getComponentes(_ req: Request) async throws -> [Componente] {
@@ -120,29 +155,48 @@ struct ContratoController: RouteCollection {
       .with(\.$fotos)
       .all()
   }
-    
-    func getCSVData(_ req: Request) async throws -> [Array<String>] {
-        do {
-            let content = try String(contentsOfFile: "./dataFluvial01.csv")
-            
-            let parsedCSV: [[String]] = content.components(separatedBy: "\n").map {
-                var arreglo = [String]()
-                
-                for item in $0.components(separatedBy: ";") {
-                    arreglo.append(item)
-                }
-                return arreglo
-            }
-            
-            try await saveJson(archivo: parsedCSV, req)
-            
-            return parsedCSV
-        }
-        catch let err {
-            print("Error en carga de contratos: " + err.localizedDescription)
-            return []
-        }
+  
+  struct OutPut: Content {
+    var filename: String
+    var rows: Int
+    var columns: Int
+    var error: String
+  }
+  
+  // -> [Array<String>] {
+  func getCSVData(_ req: Request) async throws -> OutPut {
+    struct Input: Content {
+      var file: File
     }
+    
+    var input = try req.content.decode(Input.self)
+    let content = String(buffer: input.file.data)
+    var rows = 0
+    var columns = 0
+    
+      do {
+        let parsedCSV: [[String]] = content.components(separatedBy: "\n").map {
+              var arreglo = [String]()
+              rows += 1
+              columns = 0
+              for item in $0.components(separatedBy: ";") {
+                  columns += 1
+                  arreglo.append(item)
+              }
+              return arreglo
+          }
+          
+          try await saveJson(archivo: parsedCSV, req)
+          
+          let fileOuput = OutPut(filename: input.file.filename, rows: rows, columns: columns, error: "OK")
+        
+          return fileOuput
+      }
+      catch let err {
+          print("Error en carga de contratos: " + err.localizedDescription)
+        return OutPut(filename: input.file.filename, rows: (rows - 1), columns: columns, error: err.localizedDescription)
+      }
+  }
     
   class Agreement {
     var contrato = Contrato()
@@ -176,16 +230,18 @@ struct ContratoController: RouteCollection {
       let corriente = Corriente()
       var flow = Flow()
       var contratoAnterior = ""
-      var corrienteAnterior = ""
+      var corrienteAnterior: String = ""
       
       var agreements = [Agreement]()
       let agreement = Agreement()
+      var count = 0
       
         archivo.forEach {
-            let row = $0
-            let cont_nombre = row[0]
-            
-            if(cont_nombre != "NOMBRE") {
+          let row = $0
+          let cont_nombre = row[0]
+          count += 1
+          
+          if(count > 1) {
                 
                 if(contratoAnterior != cont_nombre)  {
                   contratoAnterior = cont_nombre
@@ -200,7 +256,7 @@ struct ContratoController: RouteCollection {
                   agreements.append(agreement)
 
                 }
-                let corr_nombre = row[4]
+                let corr_nombre = String(row[4])
                 
                 if(corrienteAnterior != corr_nombre)  {
                   corrienteAnterior = corr_nombre
@@ -304,7 +360,7 @@ struct ContratoController: RouteCollection {
   func coordenadaFinal(coordenadaOriginal: String ) -> String {
     var lineString = coordenadaOriginal
     lineString = lineString.replacingOccurrences(of: "MULTILINESTRING", with: "")
-    lineString = coordenadaOriginal.replacingOccurrences(of: "LINESTRING", with: "")
+    lineString = lineString.replacingOccurrences(of: "LINESTRING", with: "")
     lineString = lineString.replacingOccurrences(of: "Z", with: "")
     lineString = lineString.replacingOccurrences(of: "POINT", with: "")
     lineString = lineString.replacingOccurrences(of: "(", with: "")
@@ -318,7 +374,8 @@ struct ContratoController: RouteCollection {
     var alt = ""
     
     if(lineString.starts(with: "NOT CHANGE")){
-      return coordenadaOriginal
+      let coordenadaBK = coordenadaOriginal.replacingOccurrences(of: "NOT CHANGE", with: "")
+      return coordenadaBK
     }
     
     coordenadas.forEach { fila in
@@ -405,6 +462,25 @@ struct ContratoController: RouteCollection {
                 colorestado = "#FF0080"
             }
             
+            let conse1: [String]
+            if(hallazgoWide.hallazgo.position.contains(",")){
+              conse1 = hallazgoWide.hallazgo.position.components(separatedBy: ",")
+            }else{
+              conse1 = hallazgoWide.hallazgo.position.components(separatedBy: ".")
+            }
+            
+            let conse2 = conse1[0]
+            let conse3 = conse2.components(separatedBy: ":")
+            let conse4 = conse3[1]
+            let str = conse4.trimmingCharacters(in: .whitespaces)
+            
+            let start = str.index(str.startIndex, offsetBy: 3)
+            let end = str.index(str.startIndex, offsetBy: 8)
+            let range = start..<end
+
+            let consecutivoString = String(str[range])
+            let consecutivo = Int(consecutivoString)
+            
             let hallazgoFinal = Hallazgo(fecha: hallazgoWide.hallazgo.fecha,
                                          nomenclatura: hallazgoWide.hallazgo.nomenclatura,
                                          margen: hallazgoWide.hallazgo.margen,
@@ -433,10 +509,10 @@ struct ContratoController: RouteCollection {
                                          estado: hallazgoWide.hallazgo.estado,
                                         corrienteID: idCorriente,
                                          icono: icono,
-                                        colorestado: colorestado)
+                                        colorestado: colorestado,
+                                         consecutivo: consecutivo ?? 0)
             
             try await hallazgoFinal.save(on: req.db)
-            
             
             //-- Save estado
             let estadoHallazgo = hallazgoWide.hallazgo.estado.rawValue
@@ -444,9 +520,22 @@ struct ContratoController: RouteCollection {
               .filter(\.$nombre == estadoHallazgo)
               .first()
             
+            var iconoEstado = ""
             if(verifyEstado == nil){
+              switch estadoHallazgo {
+                case "NA":
+                  iconoEstado = "colorNaranja.png"
+                case "BUENO":
+                  iconoEstado = "colorVerde.png"
+                case "REGULAR":
+                  iconoEstado = "colorAmarillo.png"
+                case "MALO":
+                  iconoEstado = "colorRojo.png"
+                default:
+                  iconoEstado = "iconoxDefinir.png"
+              }
               let newEstado =
-                  Estado(nombre: estadoHallazgo, icono: "colorxDefinir.png")
+                  Estado(nombre: estadoHallazgo, icono: iconoEstado)
               try await newEstado.save(on: req.db)
             }
             // Save componente
@@ -455,9 +544,24 @@ struct ContratoController: RouteCollection {
               .filter(\.$nombre == componenteHallazgo)
               .first()
             
+            var iconoComponente = ""
             if(verifyComponente  ==  nil){
+              switch componenteHallazgo {
+                case "PLACA":
+                  iconoComponente = "placaNa.png"
+                case "BARRA":
+                  iconoComponente = "barraNa.png"
+                case "ESTRUCTURA_DE_CAIDA":
+                  iconoComponente = "estructura_de_caidaNa.png"
+                case "MURO":
+                  iconoComponente = "muroNa.png"
+                case "OBSTRUCCION":
+                  iconoComponente = "obstruccionNa.png"
+                default:
+                  iconoComponente = "iconoxDefinir.png"
+              }
               let newComponente  =
-                  Componente(nombre: componenteHallazgo, icono: "iconoxDefinir.png")
+                  Componente(nombre: componenteHallazgo, icono: iconoComponente)
               try await newComponente.save(on: req.db)
             }
             // ------
@@ -480,12 +584,15 @@ struct ContratoController: RouteCollection {
             // ------
             var newFoto = Foto()
             for foto in hallazgoWide.fotos {
-              if(foto.src != "") {
+              if(foto.src != String("")) {
                 let fotoDB = try await Foto.query(on: req.db)
-                  .filter(\.$src == foto.src)
+                  .filter(\.$src == String(foto.src))
                   .first()
                 
                 if(fotoDB == nil) {
+                  if(foto.text == String("")) {
+                    foto.text = "Comp. \(hallazgoWide.hallazgo.componente) Estado: \(hallazgoWide.hallazgo.estado.rawValue) "
+                  }
                   newFoto  = Foto(src: foto.src, etiqueta: foto.text)
                   try await newFoto.save(on: req.db)
                   try await hallazgoFinal.$fotos.attach(newFoto, on: req.db)
@@ -565,49 +672,53 @@ struct ContratoController: RouteCollection {
                    f4: String, t4: String) -> [ClaseFoto] {
         
         var fotos = [ClaseFoto]()
-        let foto = ClaseFoto()
         
-        if(f1 != "") {
+        
+        if(f1 != String("")) {
           var f1C = f1.trimmingCharacters(in: .whitespaces)
           f1C = f1C.replacingOccurrences(of: " ", with: "_")
           f1C = f1C.replacingOccurrences(of: "  ", with: "_")
           f1C = f1C.replacingOccurrences(of: "\\", with: "/")
           f1C = f1C.replacingOccurrences(of: "__", with: "_")
           f1C = f1C.applyingTransform(.stripDiacritics, reverse: false)!
-            foto.src = f1C
+            let foto = ClaseFoto()
+            foto.src = "https://bitacora.s3.amazonaws.com/\(f1C)"
             foto.text = t1
             fotos.append(foto)
         }
-        if(f2 != "") {
+        if(f2 != String("")) {
           var f2C = f2.trimmingCharacters(in: .whitespaces)
           f2C = f2C.replacingOccurrences(of: " ", with: "_")
           f2C = f2C.replacingOccurrences(of: "  ", with: "_")
           f2C = f2C.replacingOccurrences(of: "\\", with: "/")
           f2C = f2C.replacingOccurrences(of: "__", with: "_")
           f2C = f2C.applyingTransform(.stripDiacritics, reverse: false)!
-            foto.src = f2C
+            let foto = ClaseFoto()
+            foto.src = "https://bitacora.s3.amazonaws.com/\(f2C)"
             foto.text = t2
             fotos.append(foto)
         }
-        if(f3 != "") {
+        if(f3 != String("")) {
           var f3C = f3.trimmingCharacters(in: .whitespaces)
           f3C = f3C.replacingOccurrences(of: " ", with: "_")
           f3C = f3C.replacingOccurrences(of: "  ", with: "_")
           f3C = f3C.replacingOccurrences(of: "\\", with: "/")
           f3C = f3C.replacingOccurrences(of: "__", with: "_")
           f3C = f3C.applyingTransform(.stripDiacritics, reverse: false)!
-            foto.src = f3C
+          let foto = ClaseFoto()
+            foto.src = "https://bitacora.s3.amazonaws.com/\(f3C)"
             foto.text = t3
             fotos.append(foto)
         }
-        if(f4 != "") {
+        if(f4 != String("")) {
           var f4C = f4.trimmingCharacters(in: .whitespaces)
           f4C = f4C.replacingOccurrences(of: " ", with: "_")
           f4C = f4C.replacingOccurrences(of: "  ", with: "_")
           f4C = f4C.replacingOccurrences(of: "\\", with: "/")
           f4C = f4C.replacingOccurrences(of: "__", with: "_")
           f4C = f4C.applyingTransform(.stripDiacritics, reverse: false)!
-            foto.src = f4C
+            let foto = ClaseFoto()
+            foto.src = "https://bitacora.s3.amazonaws.com/\(f4C)"
             foto.text = t4
             fotos.append(foto)
         }

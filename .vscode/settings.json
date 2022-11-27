@@ -1,3 +1,18 @@
 {
-  "nuxt.isNuxtApp": false
+  "nuxt.isNuxtApp": false,
+  "sqltools.connections": [
+    {
+      "mysqlOptions": {
+        "authProtocol": "default"
+      },
+      "previewLimit": 50,
+      "server": "127.0.0.1",
+      "port": 8888,
+      "driver": "MySQL",
+      "name": "DB Moodle USB",
+      "database": "usbmed_domusvirtual_m",
+      "username": "robinson",
+      "password": "Usb.2022*!"
+    }
+  ]
 }

@@ -15,26 +15,33 @@ public func configure(_ app: Application) throws {
     app.middleware.use(app.sessions.middleware)
     
     let corsConfiguration = CORSMiddleware.Configuration(
-      allowedOrigin:.any(["http://localhost:8080",
-                          "http://localhost",
-                          "https://bitacorafluvial.com",
-                          "http://localhost:8081",
-                          "http://localhost:8082",
-                          "http://localhost:8083"]),
-      allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
-      allowedHeaders: [.accept,
-                       .authorization,
-                       .contentType,
-                       .origin,
-                       .xRequestedWith,
-                       .userAgent,
-                       .accessControlAllowOrigin,
-                       .accessControlAllowHeaders],
-      allowCredentials: true
+        //allowedOrigin: .all,
+      allowedOrigin: .any(["http://localhost:5173",
+                              "https://bitacorafluvial.com",
+                              "https://bitacorafluvial.com:82"]),
+      
+//            .any(["http://localhost:8080",
+//                            "http://localhost:3333",
+//                            "https://virtualidad.usbmed.edu.co",
+//                            "http://localhost:8081",
+//                            "http://localhost:8082",
+//                            "http://localhost:8083"]),
+      
+        allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
+        allowedHeaders: [.accept,
+                         .authorization,
+                         .contentType,
+                         .origin,
+                         .xRequestedWith,
+                         .userAgent,
+                         .accessControlAllowOrigin,
+                         .accessControlAllowHeaders,
+                         .init("crossDomain")],
+        allowCredentials: true
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
     // cors middleware should come before default error middleware using `at: .beginning`
-    //app.middleware.use(cors, at: .beginning)
+    app.middleware.use(cors, at: .beginning)
     
     let port: Int
     if let environmentPort = Environment.get("PORT") {
@@ -82,18 +89,19 @@ public func configure(_ app: Application) throws {
     app.redis.configuration = redisConfig
     //-----
 
-    app.migrations.add(CreateUser())
-    app.migrations.add(CreateContrato())
-    app.migrations.add(CreateCorriente())
-    app.migrations.add(CreateHallazgo())
-    app.migrations.add(CreateComponente())
-    app.migrations.add(CreateEstado())
-    app.migrations.add(CreateFoto())
-    app.migrations.add(CreateRevisor())
+  app.migrations.add(CreateUser())
+  app.migrations.add(CreateContrato())
+  app.migrations.add(CreateCorriente())
+  app.migrations.add(CreateHallazgo())
+  app.migrations.add(CreateComponente())
+  app.migrations.add(CreateEstado())
+  app.migrations.add(CreateFoto())
+  app.migrations.add(CreateRevisor())
   app.migrations.add(CreateHallazgoRevisorPivot())
   app.migrations.add(CreateHallazgoFotoPivot())
   app.migrations.add(AddIcono())
   app.migrations.add(AddColorestado())
+  app.migrations.add(AddConsecutivo())
     
 //    app.databases.middleware.use(UserMiddleware(), on: .psql)
 

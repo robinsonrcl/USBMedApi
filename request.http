@@ -39,6 +39,32 @@ Content-Type: application/json
   ]
 }
 ###
+post http://localhost:8082/api/patologia
+Content-Type: application/json
+
+{
+  "lat": 6.162633326,
+  "lng": -75.60666957,
+}
+###
+{ "lat": 6.162633326, "lng": -75.60666957 }
+###
+get https://virtualidad.usbmed.edu.co:83/api/cursos
+
+###
+get https://virtualidad.usbmed.edu.co:83/api/programas
+###
+get http://localhost:8083/api/cursos
+###
+get http://localhost:8083/api/programas
+###
+post https://virtualidad.usbmed.edu.co:81/informes/searchindividual
+Content-Type: application/json
+
+{
+  "term": "1,020,459,975"
+}
+###
 contratos: 
   9D38C1F8-734B-43CC-BDC5-02686EA6C5BF
 corrientes: 
