@@ -188,7 +188,7 @@ struct ContratoController: RouteCollection {
           
           try await saveJson(archivo: parsedCSV, req)
           
-          let fileOuput = OutPut(filename: input.file.filename, rows: rows, columns: columns, error: "OK")
+          let fileOuput = OutPut(filename: input.file.filename, rows: (rows - 1), columns: columns, error: "OK")
         
           return fileOuput
       }
