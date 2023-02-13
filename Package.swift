@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "ProcytecApi",
+    name: "USBMedApi",
     platforms: [
        .macOS(.v12)
     ],
